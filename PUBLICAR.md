@@ -78,7 +78,7 @@ Copie a linha inteira, que começa com `ssh-ed25519`.
 Só na primeira vez. Se a pasta já tem `.git`, pule para o passo 5.
 
 ```sh
-cd ~/gravador-de-telas
+cd ~/estudos/gravador-de-telas
 git init -b main
 
 # identidade só deste repositório (o histórico é público: use o e-mail que você quer expor)
@@ -96,7 +96,7 @@ git commit -m "Gravador de telas: versão inicial"
 ## 5. Primeiro envio
 
 ```sh
-cd ~/gravador-de-telas
+cd ~/estudos/gravador-de-telas
 ./publicar.sh
 ```
 
@@ -146,7 +146,7 @@ Só na primeira vez, **depois** do primeiro push:
 ## 8. Publicar uma atualização (com versão)
 
 ```sh
-cd ~/gravador-de-telas
+cd ~/estudos/gravador-de-telas
 git add -A
 git commit -m "o que mudou"
 ./publicar.sh
