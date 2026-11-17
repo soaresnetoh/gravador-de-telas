@@ -2,3 +2,6 @@
 __*
 *.log
 .DS_Store
+
+# anotações locais (resumos de sessão etc.)
+.temp/

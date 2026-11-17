@@ -19,7 +19,12 @@
 #   ./publicar.sh --sem-versao     envia os commits sem criar versão nova
 #   ./publicar.sh --check          só roda o gitleaks
 #
+# Se existir .temp/privado.sh (arquivos privados, repositório separado), ele roda
+# junto: salva e envia no fim (--status e --check também passam para ele).
+# Para pular: GRAVADOR_SEM_PRIVADO=1 ./publicar.sh ...
+#
 # Saída: 0 ok · 1 cancelado · 2 configuração · 4 gitleaks bloqueou · 5 GitHub falhou/recusou
+#        6 público ok, mas a parte privada (.temp) falhou
 
 set -uo pipefail
 
@@ -50,6 +55,22 @@ case "${1:-}" in
   "")                ;;
   *) fail "argumento desconhecido: $1 (use patch, minor, major, --status, --sem-versao ou --check)"; exit 2 ;;
 esac
+
+# ---------- parte privada (.temp/privado.sh), roda sempre no fim ----------
+PRIVADO="$REPO/.temp/privado.sh"
+run_privado() {
+  local rc=$1 arg=""
+  trap - EXIT
+  [[ $rc == 1 || -n "${GRAVADOR_SEM_PRIVADO:-}" || ! -x "$PRIVADO" ]] && exit "$rc" # cancelado / desligado / não existe
+  case $MODE in status) arg=--status ;; check) arg=--check ;; esac
+  echo
+  echo "🔒 Parte privada (.temp)"
+  if "$PRIVADO" ${arg:+"$arg"}; then exit "$rc"; fi
+  printf '❌ %s\n' "a parte privada falhou — veja a mensagem acima (.temp/PRIVADO.md)" >&2
+  [[ $rc == 0 ]] && exit 6
+  exit "$rc"
+}
+trap 'run_privado $?' EXIT
 
 # ---------- pré-checagens ----------
 command -v docker >/dev/null || { fail "docker não encontrado"; exit 2; }

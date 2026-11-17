@@ -215,3 +215,12 @@ O Pages republica sozinho a cada envio, em cerca de 1 minuto.
 | `GRAVADOR_KNOWN_DIR` | `~/.config/gravador-de-telas` |
 
 Exemplo para outra conta: `GRAVADOR_REMOTE=git@github.com:outra-conta/gravador-de-telas.git ./publicar.sh`
+
+## Arquivos privados junto da publicação (opcional)
+
+Se existir um script executável em `.temp/privado.sh`, o `publicar.sh` roda esse script **no fim**, mesmo quando a parte pública falha:
+- o `--status` e o `--check` são repassados para ele;
+- a saída **6** significa que o público foi publicado, mas a parte privada falhou;
+- para pular a parte privada, rode `GRAVADOR_SEM_PRIVADO=1 ./publicar.sh ...`.
+
+A pasta `.temp/` está no `.gitignore` e nunca vai para este repositório.
