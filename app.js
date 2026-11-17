@@ -1314,6 +1314,83 @@ window.addEventListener('keydown', (e) => {
 });
 el.exportBtn.addEventListener('click', exportJson);
 
+// ---------- ajuda ----------
+// "?" de cada parte abre um balão com o resumo (o .help-short da seção do guia);
+// "Ajuda" no topo (ou ? / F1) abre o guia completo. Um texto só, nos dois lugares.
+
+const help = {
+  dialog: $('#helpDialog'),
+  pop: $('#helpPop'),
+  btn: null, // botão "?" com o balão aberto
+};
+
+function openHelp(key) {
+  closeHelpPop();
+  if (!help.dialog.open) help.dialog.showModal();
+  const sec = key && document.getElementById(`ajuda-${key}`);
+  const body = help.dialog.querySelector('.help-body');
+  if (sec) {
+    body.scrollTo({ top: sec.offsetTop - body.offsetTop, behavior: 'instant' });
+    sec.classList.add('flash');
+    setTimeout(() => sec.classList.remove('flash'), 1200);
+  } else {
+    body.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  log('ajuda aberta', { secao: key || 'geral' });
+}
+
+function closeHelpPop() {
+  help.pop.hidden = true;
+  help.btn?.setAttribute('aria-expanded', 'false');
+  help.btn = null;
+}
+
+function toggleHelpPop(btn) {
+  if (help.btn === btn) { closeHelpPop(); return; }
+  closeHelpPop();
+  const sec = document.getElementById(`ajuda-${btn.dataset.help}`);
+  if (!sec) { openHelp(); return; }
+  help.pop.querySelector('.help-pop-title').textContent = sec.querySelector('h3').textContent;
+  help.pop.querySelector('.help-pop-body').replaceChildren(sec.querySelector('.help-short').cloneNode(true));
+  help.pop.querySelector('.help-pop-more').onclick = () => openHelp(btn.dataset.help);
+  help.pop.hidden = false;
+  // abaixo do botão; se não couber, acima
+  const r = btn.getBoundingClientRect();
+  const w = help.pop.offsetWidth;
+  const h = help.pop.offsetHeight;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  const top = r.bottom + 8 + h > innerHeight ? Math.max(8, r.top - 8 - h) : r.bottom + 8;
+  Object.assign(help.pop.style, { left: `${left}px`, top: `${top}px` });
+  btn.setAttribute('aria-expanded', 'true');
+  help.btn = btn;
+  help.pop.querySelector('.help-pop-more').focus({ preventScroll: true });
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.help-btn');
+  if (b) { e.preventDefault(); toggleHelpPop(b); return; }
+  if (help.btn && !help.pop.contains(e.target)) closeHelpPop();
+});
+$('#helpBtn').addEventListener('click', () => openHelp());
+$('#helpClose').addEventListener('click', () => help.dialog.close());
+help.dialog.addEventListener('click', (e) => { if (e.target === help.dialog) help.dialog.close(); }); // clique fora
+help.dialog.querySelector('.help-nav').addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#ajuda-"]');
+  if (!a) return;
+  e.preventDefault(); // não mexe na URL da página
+  openHelp(a.getAttribute('href').slice('#ajuda-'.length));
+});
+addEventListener('scroll', closeHelpPop, { passive: true });
+addEventListener('resize', closeHelpPop);
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && help.btn) { const b = help.btn; closeHelpPop(); b.focus(); return; }
+  if (e.target.closest?.('input, select, textarea') || !el.selector.hidden) return;
+  if (e.key === 'F1' || (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+    e.preventDefault();
+    openHelp();
+  }
+});
+
 // ---------- configurações salvas ----------
 
 const FIELDS = {

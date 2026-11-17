@@ -17,6 +17,7 @@ Grave a tela, uma janela ou uma aba direto no navegador. Dá para incluir o áud
 - **Tudo fica salvo no navegador:** configurações, gravações e histórico continuam lá depois de recarregar. Se a página fechar no meio de uma gravação, o vídeo é **recuperado**. O botão "Exportar histórico (JSON)" baixa configurações, lista de gravações e log de uso.
 - **Fundo e efeitos da câmera:** desfoque leve ou forte, fundos prontos (estúdio, pôr do sol, oceano, luzes, verde chroma key), sua própria imagem e filtros (P&B, noir, sépia, vintage, cores vivas, quente, frio, mais claro). Dá para trocar durante a gravação. O recorte usa o [MediaPipe Selfie Segmenter](https://ai.google.dev/edge/mediapipe/solutions/vision/image_segmenter) (Apache-2.0), que fica em `libs/mediapipe` e roda localmente.
 - Qualidade (bitrate) e 30/60 fps configuráveis
+- **Ajuda dentro do app:** um botão **?** em cada parte mostra um resumo rápido. O botão **Ajuda** no topo (ou as teclas **?** e **F1**) abre o guia completo, com passo a passo, exemplos, receitas prontas, atalhos e problemas comuns.
 - Várias gravações por sessão, cada uma com prévia, botão de baixar e botão de excluir
 - A gravação para sozinha quando você clica em "Parar compartilhamento" no navegador
 - PWA instalável e com funcionamento offline; tema claro/escuro automático

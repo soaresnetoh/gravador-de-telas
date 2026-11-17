@@ -22,7 +22,13 @@
         <span class="brand-sub">Tela, câmera e áudio direto no navegador</span>
       </div>
     </div>
-    <button id="installBtn" class="btn btn-ghost" hidden>Instalar app</button>
+    <div class="top-actions">
+      <button id="helpBtn" class="btn btn-ghost" title="Guia passo a passo (tecla ? ou F1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/></svg>
+        Ajuda
+      </button>
+      <button id="installBtn" class="btn btn-ghost" hidden>Instalar app</button>
+    </div>
   </header>
 
   <main class="layout">
@@ -74,12 +80,13 @@
             <svg class="mic-off" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>
             <span id="micLabel">Mic desligado</span>
           </button>
+          <button type="button" class="help-btn" data-help="controles" aria-label="Ajuda: Gravar e controles" title="Ajuda: Gravar e controles">?</button>
         </div>
       </section>
 
       <div class="opts">
         <section class="card">
-          <h2>Áudio</h2>
+          <h2>Áudio <button type="button" class="help-btn" data-help="audio" aria-label="Ajuda: Áudio" title="Ajuda: Áudio">?</button></h2>
           <label class="check">
             <input type="checkbox" id="sysAudio" checked>
             <span>Áudio da tela/aba</span>
@@ -100,7 +107,7 @@
         </section>
 
         <section class="card">
-          <h2>Configurações</h2>
+          <h2>Configurações <button type="button" class="help-btn" data-help="config" aria-label="Ajuda: Configurações" title="Ajuda: Configurações">?</button></h2>
           <div class="field-grid">
             <label class="field">
               <span>Formato</span>
@@ -133,7 +140,7 @@
 
       <section class="card recordings">
         <div class="rec-head">
-          <h2>Gravações</h2>
+          <h2>Gravações <button type="button" class="help-btn" data-help="gravacoes" aria-label="Ajuda: Gravações" title="Ajuda: Gravações">?</button></h2>
           <button id="exportBtn" class="btn btn-ghost btn-sm" title="Configurações, lista de gravações e histórico de uso">Exportar histórico (JSON)</button>
         </div>
         <p id="emptyList" class="hint">Nenhuma gravação ainda. Elas ficam guardadas neste navegador, mesmo se você recarregar ou fechar a página.</p>
@@ -145,7 +152,7 @@
     <!-- Lateral: o que muda o visual do vídeo -->
     <aside class="side">
       <section class="card area-card">
-        <h2>Área de gravação</h2>
+        <h2>Área de gravação <button type="button" class="help-btn" data-help="area" aria-label="Ajuda: Área de gravação" title="Ajuda: Área de gravação">?</button></h2>
         <div class="shapes" role="radiogroup" aria-label="Área de gravação">
           <label class="shape"><input type="radio" name="area" value="full" checked>
             <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/></svg><span>Tela toda</span></label>
@@ -170,7 +177,7 @@
       </section>
 
       <section class="card cam-card">
-        <h2>Câmera</h2>
+        <h2>Câmera <button type="button" class="help-btn" data-help="camera" aria-label="Ajuda: Câmera" title="Ajuda: Câmera">?</button></h2>
         <label class="field device-field">
           <span>Qual câmera</span>
           <select id="camDevice"><option value="">Padrão do sistema</option></select>
@@ -229,6 +236,165 @@
       </section>
     </aside>
   </main>
+
+  <!-- Ajuda rápida (balão do botão "?") -->
+  <div id="helpPop" class="help-pop" role="dialog" aria-modal="false" hidden>
+    <strong class="help-pop-title"></strong>
+    <div class="help-pop-body"></div>
+    <button type="button" class="btn btn-sm help-pop-more">Passo a passo completo →</button>
+  </div>
+
+  <!-- Guia completo. Cada seção começa com um resumo (.help-short), que também aparece no balão do "?". -->
+  <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">Como usar o Gravador de telas</h2>
+      <button type="button" class="btn btn-ghost btn-sm" id="helpClose" aria-label="Fechar ajuda">Fechar ✕</button>
+    </div>
+    <nav class="help-nav" aria-label="Seções da ajuda">
+      <a href="#ajuda-inicio">Primeiros passos</a>
+      <a href="#ajuda-controles">Controles</a>
+      <a href="#ajuda-area">Área</a>
+      <a href="#ajuda-camera">Câmera</a>
+      <a href="#ajuda-audio">Áudio</a>
+      <a href="#ajuda-config">Configurações</a>
+      <a href="#ajuda-gravacoes">Gravações</a>
+      <a href="#ajuda-exemplos">Exemplos</a>
+      <a href="#ajuda-atalhos">Atalhos</a>
+      <a href="#ajuda-problemas">Problemas</a>
+    </nav>
+    <div class="help-body">
+
+      <section id="ajuda-inicio">
+        <h3>Primeiros passos</h3>
+        <p class="help-short">Grave em 3 passos: clique em <strong>Gravar</strong>, escolha a tela, janela ou aba e clique em <strong>Parar</strong>. O vídeo aparece em <em>Gravações</em>, pronto para baixar.</p>
+        <ol>
+          <li><strong>(Opcional) Ajuste antes:</strong> áudio, microfone, câmera e área de gravação. Tudo fica salvo para a próxima vez.</li>
+          <li>Clique em <strong>Gravar</strong>. O navegador abre a janela de compartilhamento com as opções <em>Guia</em>, <em>Janela</em> ou <em>Tela inteira</em>. Escolha uma e clique em <em>Compartilhar</em>.</li>
+          <li>Se a área não for “Tela toda”, desenhe a área com o mouse e clique em <strong>Confirmar e gravar</strong>.</li>
+          <li>Depois da contagem 3‑2‑1 (se estiver ligada), a gravação começa. O selo <strong>REC</strong> mostra o tempo.</li>
+          <li>Clique em <strong>Parar</strong> (ou em “Parar compartilhamento” na barra do navegador).</li>
+          <li>A gravação aparece em <strong>Gravações</strong>: assista, <strong>baixe</strong> ou exclua.</li>
+        </ol>
+        <p class="help-note">Funciona no Chrome e no Edge do computador. Celulares não permitem gravar a tela pelo navegador. Nada é enviado para a internet: tudo fica no seu computador.</p>
+      </section>
+
+      <section id="ajuda-controles">
+        <h3>Gravar, pausar e os outros controles</h3>
+        <p class="help-short"><strong>Gravar</strong> começa, <strong>Pausar</strong> congela sem criar outro arquivo, <strong>Parar</strong> finaliza, <strong>Trocar tela</strong> muda o que está sendo gravado e <strong>Mic</strong> liga ou desliga o microfone, tudo sem interromper o vídeo.</p>
+        <ul>
+          <li><strong>Gravar:</strong> abre a escolha da tela e começa.</li>
+          <li><strong>Pausar / Continuar:</strong> o trecho pausado não entra no vídeo. É útil para abrir um arquivo ou atender alguém.</li>
+          <li><strong>Parar:</strong> encerra e salva em <em>Gravações</em>.</li>
+          <li><strong>Trocar tela:</strong> durante a gravação, pausa, deixa escolher outra tela, janela ou aba e continua <strong>no mesmo arquivo</strong>. Se você usa uma área recortada, desenhe a área de novo na tela nova. Se a proporção for diferente, a imagem entra inteira, com faixas na cor de fundo.</li>
+          <li><strong>Mic ligado / desligado:</strong> funciona também durante a gravação (tecla <kbd>M</kbd>).</li>
+        </ul>
+        <div class="help-example"><strong>Exemplo:</strong> você está gravando os slides e quer mostrar um site. Clique em <strong>Trocar tela</strong>, escolha a aba do site e continue falando. Para voltar, clique em <strong>Trocar tela</strong> de novo e escolha os slides. No fim, sai um único vídeo.</div>
+      </section>
+
+      <section id="ajuda-area">
+        <h3>Área de gravação</h3>
+        <p class="help-short">Escolha gravar a <strong>tela toda</strong> ou só uma parte: retângulo, quadrado, redondo ou livre. Depois de escolher a tela, você desenha a área com o mouse.</p>
+        <ol>
+          <li>Em <em>Área de gravação</em>, escolha <strong>Tela toda</strong>, <strong>Retângulo</strong>, <strong>Quadrado</strong>, <strong>Redondo</strong> ou <strong>Livre</strong>.</li>
+          <li>Clique em <strong>Gravar</strong> e escolha a tela, janela ou aba.</li>
+          <li>A imagem capturada aparece grande. <strong>Arraste</strong> para marcar a área. No modo <em>Livre</em>, segure o botão e contorne o que quer gravar.</li>
+          <li>Use <strong>Refazer</strong> para desenhar de novo, <strong>Tela cheia</strong> para desistir do recorte ou <strong>Cancelar</strong> (<kbd>Esc</kbd>).</li>
+          <li>Clique em <strong>Confirmar e gravar</strong> (<kbd>Enter</kbd>).</li>
+        </ol>
+        <p>Nas formas <strong>Redondo</strong> e <strong>Livre</strong>, a parte de fora fica <em>preta</em>, <em>branca</em> ou <em>verde</em>. O verde serve para recortar depois num editor de vídeo (chroma key).</p>
+        <div class="help-example"><strong>Exemplo:</strong> para gravar só o gráfico de uma planilha, escolha <strong>Retângulo</strong> → <strong>Gravar</strong> → a janela da planilha → arraste em volta do gráfico → <strong>Confirmar e gravar</strong>. O vídeo sai só com o gráfico, na resolução original, sem perder nitidez.</div>
+      </section>
+
+      <section id="ajuda-camera">
+        <h3>Câmera</h3>
+        <p class="help-short">Coloque sua câmera dentro do vídeo: escolha a câmera, clique em <strong>Mostrar câmera no vídeo</strong>, <strong>arraste</strong> a bolha na prévia e use a <strong>rodinha do mouse</strong> para o tamanho. Dá para trocar o fundo, aplicar efeitos e escrever uma legenda.</p>
+        <ol>
+          <li>Em <strong>Qual câmera</strong>, escolha a webcam. Se os nomes não aparecerem, escolha “Mostrar todas as câmeras…” e permita o acesso.</li>
+          <li>Clique em <strong>Mostrar câmera no vídeo</strong>. A câmera aparece na prévia exatamente onde vai sair no vídeo.</li>
+          <li><strong>Arraste</strong> para posicionar. Use a <strong>rodinha do mouse</strong> sobre ela ou o controle <strong>Tamanho</strong> para mudar o tamanho.</li>
+          <li><strong>Formato:</strong> redondo, quadrado ou retângulo. <strong>Legenda:</strong> um texto opcional embaixo, como nome e cargo.</li>
+          <li><strong>Plano de fundo:</strong> desfocar, desfocar forte, estúdio, pôr do sol, oceano, luzes, verde (chroma key) ou <em>Minha imagem…</em>. <strong>Efeito:</strong> preto e branco, noir, sépia, vintage, cores vivas, quente, frio ou mais claro.</li>
+          <li><strong>Espelhar imagem:</strong> deixa a imagem como num espelho, que é o jeito natural de se ver.</li>
+        </ol>
+        <p><strong>Ligar no meio da gravação:</strong> a câmera aparece primeiro <strong>só na prévia</strong>, com um contorno amarelo, e <em>ainda não</em> entra no vídeo. Ajuste posição, tamanho e fundo e clique em <strong>Colocar no vídeo</strong>. <strong>Cancelar</strong> desliga a câmera.</p>
+        <p><strong>Durante a gravação</strong>, também dá para mover, redimensionar e trocar de câmera, fundo e efeito.</p>
+        <p><strong>Opções avançadas → Janela flutuante:</strong> abre a câmera numa janela por cima de tudo. Ela sempre tem a moldura do navegador.</p>
+        <div class="help-example"><strong>Exemplo:</strong> para uma aula com seu rosto no canto, escolha a webcam → <strong>Mostrar câmera no vídeo</strong> → <strong>Redondo</strong> → arraste para o canto inferior direito → legenda “Prof. Ana · Matemática” → fundo <strong>Desfocar</strong>. Depois clique em <strong>Gravar</strong>.</div>
+      </section>
+
+      <section id="ajuda-audio">
+        <h3>Áudio e microfone</h3>
+        <p class="help-short">Grave o <strong>som da tela/aba</strong> e a sua <strong>voz</strong>, misturados numa faixa só. Escolha qual microfone usar. Ele pode ser ligado, desligado ou trocado durante a gravação.</p>
+        <ol>
+          <li><strong>Áudio da tela/aba:</strong> marque a opção. Na janela de compartilhamento do navegador, marque também <em>“Compartilhar áudio”</em>.</li>
+          <li><strong>Microfone:</strong> marque e escolha em <strong>Qual microfone</strong>. Se os nomes não aparecerem, escolha “Mostrar todos os microfones…”.</li>
+          <li>Durante a gravação, use o botão <strong>Mic</strong> ou a tecla <kbd>M</kbd> para ligar e desligar. Trocar o microfone na lista também funciona gravando.</li>
+        </ol>
+        <p class="help-note">No Linux e no macOS, o Chrome só captura o som de <strong>abas</strong>, não da tela inteira. No Windows e no ChromeOS, captura também da tela inteira.</p>
+        <div class="help-example"><strong>Exemplo:</strong> para comentar um vídeo do YouTube, marque <strong>Áudio da tela/aba</strong> e <strong>Microfone</strong> → <strong>Gravar</strong> → escolha a <em>Guia</em> do YouTube e marque <em>Compartilhar áudio da guia</em>. Para tossir sem aparecer no vídeo, aperte <kbd>M</kbd>, tussa e aperte <kbd>M</kbd> de novo.</div>
+      </section>
+
+      <section id="ajuda-config">
+        <h3>Configurações</h3>
+        <p class="help-short">Escolha o <strong>formato</strong> (MP4 abre em qualquer lugar), os <strong>quadros por segundo</strong> (30 ou 60), a <strong>qualidade</strong> e se haverá <strong>contagem regressiva</strong> antes de gravar.</p>
+        <ul>
+          <li><strong>Formato:</strong> <em>MP4</em> funciona em celular, WhatsApp e editores. <em>WebM</em> é uma alternativa quando o navegador não oferece MP4.</li>
+          <li><strong>Quadros por segundo:</strong> 30 fps basta para telas com texto. Use 60 fps para jogos, animações e rolagem rápida.</li>
+          <li><strong>Qualidade:</strong> <em>Leve</em> gera um arquivo pequeno, <em>Normal</em> fica no meio, <em>Alta</em> deixa o texto nítido (recomendada) e <em>Máxima</em> é para detalhe fino. A qualidade se ajusta sozinha ao tamanho da tela ou da área.</li>
+          <li><strong>Contagem regressiva de 3 s:</strong> dá tempo de se preparar.</li>
+        </ul>
+        <div class="help-example"><strong>Exemplos:</strong> para um tutorial de planilha ou código, use MP4, 30 fps e Alta (cerca de 90 MB por minuto em 1080p). Para jogo ou animação, MP4, 60 fps e Máxima. Para mandar pelo WhatsApp, MP4, 30 fps e Leve, de preferência com uma área recortada.</div>
+      </section>
+
+      <section id="ajuda-gravacoes">
+        <h3>Gravações e histórico</h3>
+        <p class="help-short">As gravações ficam guardadas <strong>neste navegador</strong>, mesmo se você recarregar a página. Baixe as importantes. Se a página fechar no meio, o vídeo é <strong>recuperado</strong>.</p>
+        <ul>
+          <li>Cada gravação tem prévia, botão de <strong>baixar</strong> e botão de <strong>excluir</strong>. Embaixo da lista aparece quanto espaço está sendo usado.</li>
+          <li><strong>Recuperação:</strong> se o navegador fechar durante a gravação, o vídeo aparece como <em>recuperada</em> quando você abrir de novo.</li>
+          <li><strong>Exportar histórico (JSON):</strong> baixa as configurações, a lista de gravações e o registro de uso, que serve para tirar dúvidas ou fazer backup.</li>
+        </ul>
+        <p class="help-note">Limpar os dados do site, ou usar uma janela anônima, apaga as gravações guardadas. Para guardar de vez, <strong>baixe</strong> o arquivo.</p>
+      </section>
+
+      <section id="ajuda-exemplos">
+        <h3>Receitas prontas</h3>
+        <p class="help-short">Combinações prontas para os usos mais comuns.</p>
+        <div class="help-example"><strong>Videoaula com rosto:</strong> Tela toda → Microfone ligado → câmera redonda no canto com fundo desfocado → 30 fps, Alta. Para mostrar outro programa no meio da aula, use <strong>Trocar tela</strong>.</div>
+        <div class="help-example"><strong>Reportar um erro de sistema:</strong> Retângulo em volta da parte com problema → Microfone para explicar → Qualidade Normal. O arquivo fica pequeno para anexar num chamado.</div>
+        <div class="help-example"><strong>Reunião ou webinar numa aba:</strong> Tela toda → <strong>Áudio da tela/aba</strong> → <strong>Gravar</strong> → escolha a <em>Guia</em> e marque <em>Compartilhar áudio</em>. Ligue o microfone só se quiser gravar a sua voz também.</div>
+        <div class="help-example"><strong>Recorte para vídeo editado:</strong> Redondo ou Livre com fundo <strong>Verde</strong> → no editor, aplique chroma key para deixar o fundo transparente.</div>
+        <div class="help-example"><strong>Apresentador sem fundo:</strong> câmera com fundo <strong>Verde (chroma key)</strong> no tamanho máximo, para recortar você no editor e colocar sobre outro vídeo.</div>
+      </section>
+
+      <section id="ajuda-atalhos">
+        <h3>Atalhos de teclado</h3>
+        <p class="help-short"><kbd>M</kbd> liga e desliga o microfone, <kbd>?</kbd> ou <kbd>F1</kbd> abre esta ajuda e <kbd>Esc</kbd> fecha.</p>
+        <table class="help-table">
+          <tr><td><kbd>M</kbd></td><td>Liga ou desliga o microfone (também durante a gravação)</td></tr>
+          <tr><td><kbd>?</kbd> ou <kbd>F1</kbd></td><td>Abre esta ajuda</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Fecha a ajuda; na seleção de área, cancela</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>Na seleção de área, confirma e grava</td></tr>
+          <tr><td>Rodinha do mouse</td><td>Sobre a câmera na prévia: muda o tamanho</td></tr>
+        </table>
+      </section>
+
+      <section id="ajuda-problemas">
+        <h3>Problemas comuns</h3>
+        <p class="help-short">Sem som, câmera que não aparece, tela preta? Veja as soluções mais comuns.</p>
+        <table class="help-table">
+          <tr><td><strong>O vídeo ficou sem o som da tela</strong></td><td>Marque <em>Áudio da tela/aba</em> e, na janela do navegador, <em>Compartilhar áudio</em>. No Linux e no macOS, escolha uma <strong>aba</strong>.</td></tr>
+          <tr><td><strong>Sem a minha voz</strong></td><td>Confira se o botão mostra <em>Mic ligado</em> e se o microfone certo está em <em>Qual microfone</em>. Veja também a permissão no cadeado da barra de endereço.</td></tr>
+          <tr><td><strong>A câmera não aparece</strong></td><td>Feche outros programas que usam a câmera (Meet, Zoom, Teams) e confira a permissão no cadeado da barra de endereço.</td></tr>
+          <tr><td><strong>Parte do vídeo ficou preta</strong></td><td>Alguns sites protegidos (como Netflix) bloqueiam a gravação. Isso é do próprio site.</td></tr>
+          <tr><td><strong>O texto ficou borrado</strong></td><td>Use a qualidade <em>Alta</em> ou <em>Máxima</em> e grave a janela ou área em vez de reduzir a tela.</td></tr>
+          <tr><td><strong>O nome dos aparelhos não aparece</strong></td><td>Escolha “Mostrar todas as câmeras…” ou “Mostrar todos os microfones…” na lista e permita o acesso.</td></tr>
+          <tr><td><strong>Quero usar como aplicativo</strong></td><td>Clique em <strong>Instalar app</strong> no topo, se o botão aparecer, ou no ícone de instalar da barra de endereço.</td></tr>
+        </table>
+      </section>
+
+    </div>
+  </dialog>
 
   <div id="selector" class="selector" hidden>
     <div class="sel-bar">
