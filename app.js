@@ -86,6 +86,8 @@ const state = {
   micNode: null,
   crop: null, // { track, stop } quando grava só uma área
   cancelSelection: null,
+  runId: 0, // número da gravação atual (ver startRecording)
+  starting: false,
   micStream: null,
   recorder: null,
   chunks: [],
@@ -184,7 +186,8 @@ function createMixer(displayStream) {
   return mixer;
 }
 
-const micOn = () => (state.phase === 'idle' ? el.micAudio.checked : !!state.micNode);
+// Estado desejado do microfone (a caixa "Microfone"); applyMic() faz o real acompanhar.
+const micOn = () => el.micAudio.checked;
 
 function updateMicBtn() {
   const on = micOn();
@@ -195,29 +198,55 @@ function updateMicBtn() {
 }
 
 // Liga/desliga o microfone. Durante a gravação, entra/sai do mixador na hora.
-async function setMic(on) {
+// Os pedidos entram numa fila: cliques rápidos (ou M repetido) nunca abrem dois
+// microfones nem deixam o mic ligado depois de você desligar.
+let micQueue = Promise.resolve();
+function setMic(on) {
   el.micAudio.checked = on;
-  if (state.phase === 'idle' || !state.mixer) { updateMicBtn(); return; }
-  if (on && !state.micNode) {
-    try {
-      state.micStream = await openMic();
-      refreshDevices();
-    } catch {
-      el.micAudio.checked = false;
-      showAlert('Sem acesso ao microfone — gravando sem ele.', 'warn');
-      updateMicBtn();
-      return;
-    }
-    if (!state.mixer) { stopStream(state.micStream); state.micStream = null; return; } // parou enquanto pedia
-    state.micNode = state.mixer.ctx.createMediaStreamSource(state.micStream);
-    state.micNode.connect(state.mixer.dest);
-  } else if (!on && state.micNode) {
-    state.micNode.disconnect();
-    state.micNode = null;
-    stopStream(state.micStream); // solta o microfone de verdade (some o indicador do sistema)
-    state.micStream = null;
-  }
   updateMicBtn();
+  scheduleSave();
+  micQueue = micQueue.then(applyMic).catch(() => {});
+  return micQueue;
+}
+
+function dropMic() {
+  state.micNode?.disconnect();
+  stopStream(state.micStream); // solta o microfone de verdade (some o indicador do sistema)
+  Object.assign(state, { micNode: null, micStream: null });
+}
+
+async function applyMic() {
+  const mixer = state.mixer;
+  if (state.phase === 'idle' || !mixer) return;
+  const want = el.micAudio.checked;
+  if (!want) { if (state.micNode) dropMic(); return; }
+  if (state.micNode) return;
+  let stream;
+  try {
+    stream = await openMic();
+    refreshDevices();
+  } catch {
+    el.micAudio.checked = false;
+    updateMicBtn();
+    showAlert('Sem acesso ao microfone — gravando sem ele.', 'warn');
+    return;
+  }
+  // parou a gravação, começou outra ou desligou o mic enquanto pedia acesso
+  if (mixer !== state.mixer || !el.micAudio.checked || state.micNode) { stopStream(stream); return; }
+  watchMic(stream);
+  state.micStream = stream;
+  state.micNode = mixer.ctx.createMediaStreamSource(stream);
+  state.micNode.connect(mixer.dest);
+}
+
+// Microfone desconectado no meio (USB tirado): desliga e avisa, em vez de gravar silêncio.
+function watchMic(stream) {
+  stream.getAudioTracks()[0]?.addEventListener('ended', () => {
+    if (state.micStream !== stream) return;
+    showAlert('O microfone foi desconectado — a gravação continua sem ele.', 'warn');
+    log('microfone desconectado');
+    setMic(false);
+  });
 }
 
 // ---------- escolha de câmera e microfone ----------
@@ -279,6 +308,7 @@ async function switchMic() {
   let stream;
   try { stream = await openMic(); } catch (err) { showAlert(`Não foi possível trocar o microfone: ${err.message}`, 'warn'); return; }
   if (!state.mixer || !state.micNode) { stopStream(stream); return; }
+  watchMic(stream);
   const node = state.mixer.ctx.createMediaStreamSource(stream);
   node.connect(state.mixer.dest);
   state.micNode.disconnect();
@@ -456,7 +486,7 @@ function selectArea(stream, shape) {
 
     const onKey = (e) => {
       if (e.key === 'Escape' && !document.fullscreenElement) finish(null);
-      else if (e.key === 'Enter' && sel) finish(sel);
+      else if (e.key === 'Enter' && sel && !e.target.closest?.('button')) finish(sel); // Enter num botão = o botão
     };
     const ro = new ResizeObserver(layout);
 
@@ -559,6 +589,7 @@ function composeTrack(srcTrack, sel, bg, fps, overlay) {
     let current = null; // leitor da tela atual
     let offset = 0; // ajusta o relógio da tela nova para continuar de onde a anterior parou
     let lastTs = null;
+    let lastWall = 0; // performance.now() do último quadro enviado
     let rebase = false;
     const pump = async (track) => {
       const reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
@@ -571,13 +602,19 @@ function composeTrack(srcTrack, sel, bg, fps, overlay) {
         if (current !== reader) { frame.close(); reader.cancel().catch(() => {}); return; }
         let out = null;
         try {
-          if (rebase || lastTs === null) { offset = lastTs === null ? 0 : lastTs + step - frame.timestamp; rebase = false; }
+          // Tela nova: continua o relógio de onde parou + o tempo real que passou (tela parada
+          // não gera quadros; sem isso o vídeo "perderia" esse tempo e sairia do sincronismo com o áudio).
+          if (rebase || lastTs === null) {
+            offset = lastTs === null ? 0 : lastTs + Math.max(step, Math.round((performance.now() - lastWall) * 1000)) - frame.timestamp;
+            rebase = false;
+          }
           const ts = Math.max(frame.timestamp + offset, lastTs === null ? 0 : lastTs + 1);
           out = new VideoFrame(render(frame, frame.displayWidth, frame.displayHeight), {
             timestamp: ts,
             ...(frame.duration != null && { duration: frame.duration }),
           });
           lastTs = ts;
+          lastWall = performance.now();
         } catch { /* quadro ruim: pula */ } finally {
           frame.close();
         }
@@ -675,6 +712,7 @@ async function switchScreen() {
       if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') showAlert(`Não foi possível trocar a tela: ${err.message}`);
       return;
     }
+    if (!state.crop) return; // a gravação acabou enquanto escolhia
     const track = next.getVideoTracks()[0];
     track.contentHint = 'detail';
     let sel = FULL;
@@ -700,29 +738,38 @@ async function switchScreen() {
   } finally {
     stopStream(next); // escolheu e desistiu, ou a gravação acabou no meio
     state.switching = false;
-    if (resume && state.phase === 'paused') togglePause();
+    if (resume && state.phase === 'paused' && state.recorder?.state === 'paused') togglePause();
     else setPhase(state.phase);
   }
 }
 
 async function startRecording() {
+  if (state.phase !== 'idle' || state.starting) return; // clique duplo em Gravar
   hideAlert();
   const wantSys = el.sysAudio.checked;
   const wantMic = el.micAudio.checked;
 
+  state.starting = true;
+  let display;
   try {
-    state.displayStream = await pickDisplay(wantSys);
+    display = await pickDisplay(wantSys);
   } catch (err) {
     if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
       showAlert(`Não foi possível capturar a tela: ${err.message}`);
     }
     return;
+  } finally {
+    state.starting = false;
   }
 
+  // Cada gravação tem um número; se ela for cancelada e outra começar enquanto esta
+  // espera (permissão, seleção), a antiga para de mexer no estado da nova.
+  const run = ++state.runId;
+  state.displayStream = display;
   state.mixer = createMixer(state.displayStream);
   setPhase('preparing');
   if (wantMic) await setMic(true);
-  if (!state.displayStream) return; // compartilhamento encerrado enquanto pedia o microfone
+  if (run !== state.runId || !state.displayStream) return; // cancelada enquanto pedia o microfone
 
   if (wantSys && !state.displayStream.getAudioTracks().length) {
     showAlert('O áudio da tela não foi compartilhado. Para gravá-lo, escolha uma aba e marque “Compartilhar áudio”.', 'warn');
@@ -744,6 +791,7 @@ async function startRecording() {
   if (mode !== 'full') {
     setPhase('selecting');
     sel = await selectArea(state.displayStream, mode);
+    if (run !== state.runId) return;
     if (!sel || !state.displayStream) { cleanup(); return; }
   }
   // O vídeo é sempre recomposto: assim dá para ligar a câmera e trocar a tela no meio
@@ -780,6 +828,8 @@ async function startRecording() {
   state.chunks = [];
   state.pendingWrites = [];
   state.recId = `rec-${Date.now()}`;
+  // Outra aba aberta não "recupera" (e apaga) os pedaços desta gravação enquanto ela acontece.
+  navigator.locks?.request(state.recId, () => new Promise((r) => (state.releaseLock = r))).catch(() => {});
   let seq = 0;
   // Cada pedaço (1 s) vai para a memória e para o navegador: se a página recarregar, dá para recuperar.
   state.recorder.ondataavailable = (e) => {
@@ -791,6 +841,7 @@ async function startRecording() {
 
   setPhase('countdown');
   if (el.useCountdown.checked && !(await countdown(3))) return; // cancelado
+  if (run !== state.runId) return;
 
   const name = fileName(state.format.ext);
   kv.set(`meta:${state.recId}`, { name, type: state.recorder.mimeType || state.format.mime, created: Date.now() }).catch(() => {});
@@ -871,12 +922,17 @@ function finalize() {
   const blob = new Blob(state.chunks, { type });
   const ext = type.includes('mp4') ? 'mp4' : state.format.ext;
   const { recId: id, pendingWrites } = state;
+  const release = state.releaseLock ?? (() => {}); // só solta a trava depois de salvar
+  state.releaseLock = null;
   cleanup();
-  if (!blob.size) { chunks.clear(id).catch(() => {}); return; }
-  persistRecording({ id, name: fileName(ext), created: Date.now(), duration, size: blob.size, type, blob }, pendingWrites);
+  if (!blob.size) { chunks.clear(id).catch(() => {}).finally(release); return; }
+  persistRecording({ id, name: fileName(ext), created: Date.now(), duration, size: blob.size, type, blob }, pendingWrites).finally(release);
 }
 
 function cleanup() {
+  state.runId += 1; // invalida qualquer etapa que ainda esteja esperando
+  state.releaseLock?.();
+  state.releaseLock = null;
   clearInterval(state.timerId);
   state.crop?.stop();
   state.crop = null;
@@ -981,7 +1037,9 @@ async function persistRecording(rec, pendingWrites) {
 // Ao abrir a página: recupera gravações interrompidas e lista as salvas.
 async function loadRecordings() {
   try {
+    const busy = new Set(((await navigator.locks?.query())?.held ?? []).map((l) => l.name));
     for (const id of await chunks.pendingIds()) {
+      if (busy.has(id)) continue; // gravando agora em outra aba
       const parts = await chunks.of(id);
       const meta = (await kv.get(`meta:${id}`)) ?? {};
       if (parts.length) {
@@ -1154,13 +1212,20 @@ function cameraOverlay(ctx, W, H) {
 }
 
 async function toggleCamera() {
+  if (state.camOpening) return; // clique duplo enquanto a câmera abre
   if (state.camStream) { stopCamera(); return; }
+  state.camOpening = true;
   try {
-    state.camRaw = await openCam();
+    const raw = await openCam();
+    if (state.camStream) { stopStream(raw); return; }
+    state.camRaw = raw;
+    watchCam(raw);
     refreshDevices();
   } catch (err) {
     showAlert(`Não foi possível acessar a câmera: ${err.message}`);
     return;
+  } finally {
+    state.camOpening = false;
   }
   // A imagem que aparece (prévia e janela flutuante) já sai com fundo e efeitos.
   state.camFx = createCameraProcessor(state.camRaw.getVideoTracks()[0], camOptions(), camStatus);
@@ -1175,13 +1240,41 @@ async function toggleCamera() {
 }
 
 // Troca a câmera ao vivo (inclusive gravando): a gravação lê sempre state.camFx a cada quadro.
+// Câmera desconectada no meio: tira do vídeo e avisa, em vez de congelar a imagem.
+function watchCam(raw) {
+  raw.getVideoTracks()[0]?.addEventListener('ended', () => {
+    if (state.camRaw !== raw) return;
+    showAlert('A câmera foi desconectada — ela saiu do vídeo.', 'warn');
+    log('câmera desconectada');
+    stopCamera();
+  });
+}
+
+// Espera o processador novo entregar o primeiro quadro (até 3 s).
+async function fxReady(fx) {
+  for (let t = 0; t < 3000 && !fx.source(); t += 30) await new Promise((r) => setTimeout(r, 30));
+}
+
 async function switchCamera() {
-  if (!state.camStream) return;
+  if (!state.camStream || state.camSwitching) return;
+  state.camSwitching = true;
+  try {
+    await doSwitchCamera();
+  } finally {
+    state.camSwitching = false;
+  }
+}
+
+async function doSwitchCamera() {
   let raw;
   try { raw = await openCam(); } catch (err) { showAlert(`Não foi possível trocar a câmera: ${err.message}`, 'warn'); return; }
   if (!state.camStream) { stopStream(raw); return; } // desligou enquanto abria
-  const old = { fx: state.camFx, raw: state.camRaw, stream: state.camStream };
   const fx = createCameraProcessor(raw.getVideoTracks()[0], camOptions(), camStatus);
+  // A câmera antiga continua no vídeo até a nova ter imagem: sem "piscar" na gravação.
+  await fxReady(fx);
+  if (!state.camStream) { fx.stop(); stopStream(raw); return; }
+  const old = { fx: state.camFx, raw: state.camRaw, stream: state.camStream };
+  watchCam(raw);
   const stream = new MediaStream([fx.track]);
   Object.assign(state, { camFx: fx, camRaw: raw, camStream: stream });
   el.camVideo.srcObject = stream;
@@ -1308,7 +1401,8 @@ for (const c of [el.camDevice, el.micDevice]) c.addEventListener('change', () =>
 navigator.mediaDevices?.addEventListener?.('devicechange', refreshDevices);
 // Atalho: M liga/desliga o microfone (fora de campos de texto).
 window.addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() !== 'm' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key.toLowerCase() !== 'm' || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  if (helpDialogOpen()) return;
   if (e.target.closest?.('input, select, textarea') || !el.selector.hidden) return;
   setMic(!micOn());
 });
@@ -1317,6 +1411,8 @@ el.exportBtn.addEventListener('click', exportJson);
 // ---------- ajuda ----------
 // "?" de cada parte abre um balão com o resumo (o .help-short da seção do guia);
 // "Ajuda" no topo (ou ? / F1) abre o guia completo. Um texto só, nos dois lugares.
+
+function helpDialogOpen() { return !!document.querySelector('#helpDialog')?.open; }
 
 const help = {
   dialog: $('#helpDialog'),

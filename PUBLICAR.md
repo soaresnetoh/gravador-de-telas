@@ -188,6 +188,8 @@ O Pages republica sozinho a cada envio, em cerca de 1 minuto.
 | Mensagem / sintoma | Causa | Solução |
 |---|---|---|
 | `Permission denied (publickey)` | Deploy key não cadastrada, cadastrada em outro repositório ou sem **Allow write access** | Refaça o [passo 3](#3-cadastrar-a-deploy-key-no-github) e confira a caixa de escrita |
+| `Permission to … denied to deploy key` | A chave foi cadastrada **sem** "Allow write access": ela consegue ler, mas não enviar | Em **Settings → Deploy keys**, apague a chave e cadastre de novo marcando **Allow write access** (a etiqueta precisa ficar **Read/write**) |
+| `Key is already in use` (ao cadastrar no GitHub) | A mesma chave pública já está cadastrada em outro repositório ou na sua conta. O GitHub aceita cada chave uma vez só | Gere uma chave nova ([passo 2](#2-criar-a-chave-ssh-deploy-key)) e cadastre a nova |
 | `deploy key não encontrada` | O arquivo não está em `~/.ssh/gravador-de-telas/deploy_key` | Refaça o [passo 2](#2-criar-a-chave-ssh-deploy-key) ou aponte `GRAVADOR_DEPLOY_KEY` |
 | `push RECUSADO` / `non-fast-forward` | O GitHub tem commits que não existem aqui (ex.: README criado pelo site) | Traga as mudanças de lá e combine com as suas. O script nunca força, de propósito |
 | `gitleaks achou possível secret` | Algo parecido com senha ou token entrou num commit | Remova do arquivo **e do histórico** antes de publicar. Se for falso positivo, avalie com calma |
@@ -213,6 +215,7 @@ O Pages republica sozinho a cada envio, em cerca de 1 minuto.
 | `GRAVADOR_BRANCH` | `main` |
 | `GRAVADOR_DEPLOY_KEY` | `~/.ssh/gravador-de-telas/deploy_key` |
 | `GRAVADOR_KNOWN_DIR` | `~/.config/gravador-de-telas` |
+| `GRAVADOR_SEM_PRIVADO` | vazio. Com `1`, não roda a parte privada (`.temp/privado.sh`) |
 
 Exemplo para outra conta: `GRAVADOR_REMOTE=git@github.com:outra-conta/gravador-de-telas.git ./publicar.sh`
 
