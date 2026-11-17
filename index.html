@@ -44,6 +44,14 @@
               <span class="cam-bubble-cap" id="camBubbleCap" hidden></span>
             </div>
           </div>
+          <!-- Câmera ligada no meio da gravação: primeiro só prévia, entra no vídeo ao confirmar -->
+          <div id="camPending" class="cam-pending" role="status" hidden>
+            <span><strong>Prévia da câmera</strong> — ainda não está na gravação. Ajuste posição, tamanho e fundo.</span>
+            <div class="cam-pending-actions">
+              <button id="camGoLive" class="btn go">Colocar no vídeo</button>
+              <button id="camCancel" class="btn">Cancelar</button>
+            </div>
+          </div>
           <div id="countdown" class="countdown" hidden></div>
           <div id="recBadge" class="rec-badge" hidden>
             <span class="dot"></span><span id="recLabel">REC</span>

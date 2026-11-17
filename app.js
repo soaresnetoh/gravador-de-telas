@@ -27,6 +27,9 @@ const el = {
   camLayer: $('#camLayer'),
   camBubble: $('#camBubble'),
   camBubbleCap: $('#camBubbleCap'),
+  camPending: $('#camPending'),
+  camGoLive: $('#camGoLive'),
+  camCancel: $('#camCancel'),
   camSizeOut: $('#camSizeOut'),
   camInVideo: $('#camInVideo'),
   camBg: $('#camBg'),
@@ -891,6 +894,8 @@ function cleanup() {
 
 function setPhase(phase) {
   state.phase = phase;
+  // Fora da gravação a prévia já mostra o resultado: a câmera em prévia passa a valer.
+  if (phase === 'idle' && state.camStream) state.camLive = true;
   const busy = phase !== 'idle';
   el.recordBtn.disabled = busy || !supported;
   el.pauseBtn.disabled = !(phase === 'recording' || phase === 'paused') || !!state.switching;
@@ -1075,6 +1080,7 @@ function contentRect() {
 function layoutBubble() {
   const show = !!state.camStream && camLayout.mode === 'video';
   el.camLayer.hidden = !show;
+  el.camPending.hidden = !show || state.camLive;
   if (!show) return;
   const r = contentRect();
   Object.assign(el.camLayer.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
@@ -1086,7 +1092,17 @@ function layoutBubble() {
   el.camBubbleCap.hidden = !b.caption;
   Object.assign(el.camBubbleCap.style, { fontSize: `${b.fs}px`, height: `${b.pillH}px`, marginTop: `${b.gap}px` });
   // Gravando: a câmera de verdade já está no vídeo da prévia; a bolha vira só um contorno para arrastar.
-  el.camBubble.classList.toggle('ghost', !!state.crop);
+  // Em prévia (ligada no meio da gravação), mostra a imagem de verdade até você confirmar.
+  el.camBubble.classList.toggle('ghost', !!state.crop && state.camLive);
+  el.camBubble.classList.toggle('pending', !state.camLive);
+}
+
+// Liga a câmera no meio da gravação: até confirmar, ela aparece só na prévia.
+function goLiveCamera() {
+  if (!state.camStream || state.camLive) return;
+  state.camLive = true;
+  log('câmera colocada no vídeo', { formato: camLayout.shape, tamanho: `${Math.round(camLayout.size * 100)}%` });
+  layoutBubble();
 }
 
 let camDrag = null;
@@ -1132,7 +1148,7 @@ el.preview.addEventListener('loadedmetadata', layoutBubble);
 
 // Chamado a cada quadro da gravação (ver composeTrack).
 function cameraOverlay(ctx, W, H) {
-  if (camLayout.mode !== 'video' || !state.camFx) return;
+  if (camLayout.mode !== 'video' || !state.camFx || !state.camLive) return;
   const src = state.camFx.source();
   if (src) drawCameraOverlay(ctx, W, H, src, camLayout);
 }
@@ -1149,6 +1165,8 @@ async function toggleCamera() {
   // A imagem que aparece (prévia e janela flutuante) já sai com fundo e efeitos.
   state.camFx = createCameraProcessor(state.camRaw.getVideoTracks()[0], camOptions(), camStatus);
   state.camStream = new MediaStream([state.camFx.track]);
+  // Parado: a prévia já é o que vai sair. Gravando: fica só na prévia até "Colocar no vídeo".
+  state.camLive = !(state.phase === 'recording' || state.phase === 'paused');
   el.camVideo.srcObject = state.camStream;
   el.camBtnLabel.textContent = 'Remover câmera do vídeo';
   el.camBtn.classList.add('active');
@@ -1181,7 +1199,7 @@ function stopCamera() {
   state.camFx?.stop();
   stopStream(state.camRaw);
   stopStream(state.camStream);
-  Object.assign(state, { camFx: null, camRaw: null, camStream: null });
+  Object.assign(state, { camFx: null, camRaw: null, camStream: null, camLive: false });
   camStatus('');
   el.camVideo.srcObject = null;
   el.camBtnLabel.textContent = 'Mostrar câmera no vídeo';
@@ -1251,6 +1269,8 @@ async function floatCamera() {
 el.recordBtn.addEventListener('click', startRecording);
 el.pauseBtn.addEventListener('click', togglePause);
 el.switchBtn.addEventListener('click', switchScreen);
+el.camGoLive.addEventListener('click', goLiveCamera);
+el.camCancel.addEventListener('click', stopCamera);
 el.stopBtn.addEventListener('click', stopRecording);
 el.camBtn.addEventListener('click', toggleCamera);
 el.camBg.addEventListener('change', () => {

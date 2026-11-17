@@ -288,6 +288,21 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cam-bubble.ghost .cam-frame { background: transparent; border-color: transparent; box-shadow: none; }
 .cam-bubble.ghost video, .cam-bubble.ghost .cam-bubble-cap { visibility: hidden; }
 
+/* câmera em prévia (ligada no meio da gravação, ainda fora do vídeo) */
+.cam-bubble.pending .cam-frame { outline: 3px dashed #fbbf24; outline-offset: 4px; }
+.cam-pending {
+  position: absolute; left: 50%; top: 56px; transform: translateX(-50%); z-index: 3;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+  width: max-content; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 14px;
+  background: rgb(17 14 40 / 88%); color: #fff; font-size: 13px; box-shadow: 0 8px 28px rgb(0 0 0 / 40%);
+}
+.cam-pending[hidden] { display: none; }
+.cam-pending-actions { display: flex; gap: 8px; }
+.cam-pending .btn { padding: 7px 14px; }
+.cam-pending .btn { background: rgb(255 255 255 / 16%); color: #fff; border: 1px solid rgb(255 255 255 / 30%); }
+.cam-pending .btn.go { background: var(--grad); color: #fff; border: 0; }
+
+.device-field { margin-top: 6px; }
 .btn-cam { width: 100%; }
 .btn-cam svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
 .btn-cam:not(.active) { background: var(--grad); color: #fff; box-shadow: var(--glow); }
