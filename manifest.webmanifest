@@ -1,0 +1,16 @@
+{
+  "name": "Gravador de telas",
+  "short_name": "Gravador",
+  "description": "Grave sua tela com áudio e câmera direto no navegador.",
+  "lang": "pt-BR",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#8b5cf6",
+  "background_color": "#0d0e1c",
+  "icons": [
+    { "src": "assets/logo.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

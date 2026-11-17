@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gravador de telas</title>
+  <meta name="description" content="Grave sua tela com áudio do sistema, microfone e câmera flutuante — direto no navegador, sem instalar nada.">
+  <meta name="theme-color" content="#8b5cf6">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/logo.svg" alt="" width="44" height="44">
+      <div>
+        <span class="brand-name">Gravador de telas</span>
+        <a id="appVersion" class="version-pill" target="_blank" rel="noopener" hidden></a>
+        <span class="brand-sub">Tela, câmera e áudio direto no navegador</span>
+      </div>
+    </div>
+    <button id="installBtn" class="btn btn-ghost" hidden>Instalar app</button>
+  </header>
+
+  <main class="layout">
+    <div id="alert" class="alert" role="alert" hidden></div>
+
+    <!-- Coluna principal: prévia, opções de gravação e lista -->
+    <div class="main-col">
+      <section class="stage card">
+        <div class="preview">
+          <video id="preview" muted playsinline></video>
+          <div id="placeholder" class="placeholder">
+            <img src="assets/logo.svg" alt="" width="72" height="72">
+            <p>Clique em <strong>Gravar</strong> e escolha a tela, janela ou aba.</p>
+          </div>
+          <!-- Camada da câmera: mostra onde ela sai no vídeo; arraste para mover, rodinha para redimensionar -->
+          <div id="camLayer" class="cam-layer" hidden>
+            <div id="camBubble" class="cam-bubble" data-shape="circle" title="Arraste para mover · rodinha para redimensionar">
+              <div class="cam-frame"><video id="camVideo" muted playsinline autoplay></video></div>
+              <span class="cam-bubble-cap" id="camBubbleCap" hidden></span>
+            </div>
+          </div>
+          <div id="countdown" class="countdown" hidden></div>
+          <div id="recBadge" class="rec-badge" hidden>
+            <span class="dot"></span><span id="recLabel">REC</span>
+            <span id="timer">00:00</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="recordBtn" class="btn btn-record">
+            <span class="rec-icon"></span> Gravar
+          </button>
+          <button id="pauseBtn" class="btn" disabled>Pausar</button>
+          <button id="stopBtn" class="btn btn-stop" disabled>Parar</button>
+          <button id="switchBtn" class="btn btn-switch" disabled title="Gravar outra tela, janela ou aba sem parar a gravação">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M9 9h6m-2-2 2 2-2 2"/></svg>
+            Trocar tela
+          </button>
+          <button id="micBtn" class="btn btn-mic off" aria-pressed="false">
+            <svg class="mic-on" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <svg class="mic-off" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>
+            <span id="micLabel">Mic desligado</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="opts">
+        <section class="card">
+          <h2>Áudio</h2>
+          <label class="check">
+            <input type="checkbox" id="sysAudio" checked>
+            <span>Áudio da tela/aba</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="micAudio">
+            <span>Microfone</span>
+          </label>
+          <label class="field device-field">
+            <span>Qual microfone</span>
+            <select id="micDevice"><option value="">Padrão do sistema</option></select>
+          </label>
+          <p class="hint" id="audioHint">
+            Na janela de compartilhamento, marque <em>“Compartilhar áudio”</em>.
+            No Linux e no macOS o Chrome só captura áudio de <strong>abas</strong>;
+            no Windows e ChromeOS também da tela inteira.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Configurações</h2>
+          <div class="field-grid">
+            <label class="field">
+              <span>Formato</span>
+              <select id="format"></select>
+            </label>
+            <label class="field">
+              <span>Quadros por segundo</span>
+              <select id="fps">
+                <option value="30" selected>30 fps</option>
+                <option value="60">60 fps</option>
+              </select>
+            </label>
+          </div>
+          <label class="field">
+            <span>Qualidade</span>
+            <select id="quality">
+              <option value="0.06">Leve (arquivo pequeno)</option>
+              <option value="0.12">Normal</option>
+              <option value="0.2" selected>Alta (texto nítido)</option>
+              <option value="0.35">Máxima</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="useCountdown" checked>
+            <span>Contagem regressiva de 3 s</span>
+          </label>
+          <p class="hint">A qualidade se ajusta ao tamanho da tela ou da área. Em Alta, 1080p usa até ~90 MB por minuto.</p>
+        </section>
+      </div>
+
+      <section class="card recordings">
+        <div class="rec-head">
+          <h2>Gravações</h2>
+          <button id="exportBtn" class="btn btn-ghost btn-sm" title="Configurações, lista de gravações e histórico de uso">Exportar histórico (JSON)</button>
+        </div>
+        <p id="emptyList" class="hint">Nenhuma gravação ainda. Elas ficam guardadas neste navegador, mesmo se você recarregar ou fechar a página.</p>
+        <ul id="list" class="rec-list"></ul>
+        <p id="usage" class="hint"></p>
+      </section>
+    </div>
+
+    <!-- Lateral: o que muda o visual do vídeo -->
+    <aside class="side">
+      <section class="card area-card">
+        <h2>Área de gravação</h2>
+        <div class="shapes" role="radiogroup" aria-label="Área de gravação">
+          <label class="shape"><input type="radio" name="area" value="full" checked>
+            <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/></svg><span>Tela toda</span></label>
+          <label class="shape"><input type="radio" name="area" value="rect">
+            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" stroke-dasharray="3 2"/></svg><span>Retângulo</span></label>
+          <label class="shape"><input type="radio" name="area" value="square">
+            <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" stroke-dasharray="3 2"/></svg><span>Quadrado</span></label>
+          <label class="shape"><input type="radio" name="area" value="circle">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/></svg><span>Redondo</span></label>
+          <label class="shape"><input type="radio" name="area" value="lasso">
+            <svg viewBox="0 0 24 24"><path d="M6 8c3-5 11-4 13 1s-3 9-8 8-9-4-5-9z" stroke-dasharray="3 2"/></svg><span>Livre</span></label>
+        </div>
+        <label class="field" id="bgField" hidden>
+          <span>Cor fora da forma</span>
+          <select id="bg">
+            <option value="#000000">Preto</option>
+            <option value="#ffffff">Branco</option>
+            <option value="#00b140">Verde (chroma key, para recortar no editor)</option>
+          </select>
+        </label>
+        <p class="hint">Depois de escolher a tela, você desenha a área com o mouse.</p>
+      </section>
+
+      <section class="card cam-card">
+        <h2>Câmera</h2>
+        <label class="field device-field">
+          <span>Qual câmera</span>
+          <select id="camDevice"><option value="">Padrão do sistema</option></select>
+        </label>
+        <button id="camBtn" class="btn btn-cam">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10l5-3v10l-5-3"/></svg>
+          <span id="camBtnLabel">Mostrar câmera no vídeo</span>
+        </button>
+        <p class="hint cam-tip" id="camTip">A câmera aparece na prévia ao lado. <strong>Arraste</strong> para posicionar e use a <strong>rodinha do mouse</strong> sobre ela para mudar o tamanho — também durante a gravação.</p>
+
+        <div class="field cam-field">
+          <span>Formato</span>
+          <div class="seg" role="radiogroup" aria-label="Formato da câmera">
+            <label><input type="radio" name="camShape" value="circle" checked><span>Redondo</span></label>
+            <label><input type="radio" name="camShape" value="square"><span>Quadrado</span></label>
+            <label><input type="radio" name="camShape" value="rect"><span>Retângulo</span></label>
+          </div>
+        </div>
+        <label class="field">
+          <span>Tamanho <output id="camSizeOut" class="range-out"></output></span>
+          <input type="range" id="camSize" min="10" max="60" step="1" value="28">
+        </label>
+        <label class="field">
+          <span>Legenda abaixo da câmera (opcional)</span>
+          <input type="text" id="camCaption" maxlength="60" placeholder="Ex.: Seu nome · Cargo" autocomplete="off">
+        </label>
+
+        <label class="field">
+          <span>Plano de fundo</span>
+          <select id="camBg"></select>
+        </label>
+        <input type="file" id="camBgFile" accept="image/*" hidden>
+        <label class="field">
+          <span>Efeito</span>
+          <select id="camEffect"></select>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="camMirror" checked>
+          <span>Espelhar imagem</span>
+        </label>
+        <p class="hint" id="camStatus" hidden></p>
+
+        <details class="advanced">
+          <summary>Opções avançadas</summary>
+          <p class="hint">
+            <strong>Janela flutuante:</strong> abre a câmera numa janela do navegador por cima de tudo, para você se ver
+            ou mostrar em outro programa. Ela sempre tem moldura e barra de título (limite do navegador).
+          </p>
+          <button id="floatBtn" class="btn btn-sm" disabled>Abrir janela flutuante</button>
+          <label class="check">
+            <input type="checkbox" id="camInVideo" checked>
+            <span>Desenhar a câmera dentro do vídeo</span>
+          </label>
+          <p class="hint">Desmarque só se for usar a janela flutuante gravando a tela inteira — senão a câmera aparece duas vezes.</p>
+        </details>
+      </section>
+    </aside>
+  </main>
+
+  <div id="selector" class="selector" hidden>
+    <div class="sel-bar">
+      <span id="selHint" class="sel-hint"></span>
+      <span id="selSize" class="sel-size"></span>
+      <div class="row">
+        <button id="selFull" class="btn btn-ghost">Tela cheia</button>
+        <button id="selRedo" class="btn btn-ghost" disabled>Refazer</button>
+        <button id="selCancel" class="btn btn-ghost">Cancelar</button>
+        <button id="selOk" class="btn btn-record" disabled>Confirmar e gravar</button>
+      </div>
+    </div>
+    <div id="selStage" class="sel-stage">
+      <video id="selVideo" muted playsinline></video>
+      <canvas id="selCanvas"></canvas>
+    </div>
+  </div>
+
+  <template id="itemTpl">
+    <li class="rec-item">
+      <video controls preload="metadata" playsinline></video>
+      <div class="rec-meta">
+        <strong class="rec-name"></strong>
+        <span class="rec-info"></span>
+      </div>
+      <div class="row">
+        <a class="btn btn-primary rec-download">Baixar</a>
+        <button class="btn btn-ghost rec-delete">Excluir</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="version.js"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
